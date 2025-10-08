@@ -73,12 +73,12 @@ resource "hcloud_server" "current" {
   }
 
   dynamic "network" {
-    for_each = var.private_network != {} ? [1] : []
+    for_each = var.private_networks
 
     content {
-      alias_ips  = try(var.private_network["alias_ips"], [""])
-      ip         = try(var.private_network["ip"], null)
-      network_id = try(var.private_network["network_id"], null)
+      alias_ips  = try(network.value["alias_ips"], [""])
+      ip         = try(network.value["ip"], null)
+      network_id = try(network.value["network_id"], null)
     }
   }
 

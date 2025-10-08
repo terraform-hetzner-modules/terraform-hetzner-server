@@ -73,10 +73,10 @@ variable "networking" {
   default     = {}
 }
 
-variable "private_network" {
+variable "private_networks" {
   type        = any
-  description = "The private network to attach the server to on creation."
-  default     = {}
+  description = "The private networks to attach the server to on creation."
+  default     = []
 }
 
 # variable "placement_group_id" {
