@@ -66,7 +66,7 @@ output "labels" {
 
 output "network" {
   value       = try(hcloud_server.current[0].network, null)
-  description = "The network the Hetzner Cloud server should be attached to."
+  description = "Inline private networks on the server. See network_attachments for separately managed attachments."
 }
 
 output "firewall_ids" {
@@ -137,4 +137,9 @@ output "cloud_init_rendered" {
 output "cloud_init_id" {
   value       = try(data.cloudinit_config.cloud_config[0].id, null)
   description = "Checksum of the rendered cloud-init configuration, or null."
+}
+
+output "network_attachments" {
+  value       = hcloud_server_network.current
+  description = "Separate network attachments keyed by caller-supplied names, including IDs, addresses, and MAC addresses. Empty when server creation is disabled."
 }

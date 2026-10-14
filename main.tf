@@ -92,6 +92,10 @@ resource "hcloud_server" "current" {
       error_message = "Use either private_network or private_networks."
     }
     precondition {
+      condition     = length(local.private_networks) == 0 || length(var.network_attachments) == 0
+      error_message = "Use inline private_network/private_networks or separate network_attachments, not both."
+    }
+    precondition {
       condition     = alltrue([for n in local.private_networks : n.network_id != null || n.subnet_id != null])
       error_message = "Each private network needs a network_id or subnet_id."
     }
@@ -108,4 +112,14 @@ module "placement_group" {
   name   = coalesce(var.placement_group.name, var.name)
   type   = var.placement_group.type
   labels = var.placement_group.labels
+}
+
+resource "hcloud_server_network" "current" {
+  for_each = var.create_server ? var.network_attachments : {}
+
+  server_id  = hcloud_server.current[0].id
+  network_id = each.value.network_id
+  subnet_id  = each.value.subnet_id
+  ip         = each.value.ip
+  alias_ips  = each.value.alias_ips
 }

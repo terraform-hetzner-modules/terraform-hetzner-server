@@ -96,7 +96,7 @@ variable "private_networks" {
     ip         = optional(string)
     alias_ips  = optional(list(string), [])
   }))
-  description = "Named private network attachments. Prefer subnet_id for explicit subnet selection and dependency ordering."
+  description = "Named inline private networks, attached during server creation. Mutually exclusive with network_attachments. Prefer subnet_id for explicit subnet selection and dependency ordering."
   default     = {}
   nullable    = false
   validation {
@@ -205,4 +205,20 @@ variable "timeouts" {
   default     = {}
   nullable    = false
   description = "Provider operation timeouts, for example { create = \"20m\" }. Null uses the provider default."
+}
+
+variable "network_attachments" {
+  type = map(object({
+    network_id = optional(number)
+    subnet_id  = optional(string)
+    ip         = optional(string)
+    alias_ips  = optional(set(string), [])
+  }))
+  description = "Named separate server-network resources, attached after server creation. Use exactly one of network_id or subnet_id per entry. Mutually exclusive with inline private networks; empty when create_server is false."
+  default     = {}
+  nullable    = false
+  validation {
+    condition     = alltrue([for n in var.network_attachments : (n.network_id != null) != (n.subnet_id != null)])
+    error_message = "Each network attachment requires exactly one of network_id or subnet_id."
+  }
 }

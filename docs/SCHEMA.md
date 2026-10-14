@@ -17,9 +17,9 @@ Report format 1. Every field of every provider configuration, resource and data 
 
 | Measurement            | Leaves | Breakdown                                                                            |
 | ---------------------- | ------ | ------------------------------------------------------------------------------------ |
-| Inventory              | 96     | complete: 101 nodes, 96 leaves                                                       |
-| Resource inputs        | 33     | 21 direct, 5 transformed, 3 derived, 0 fixed, 4 omitted, 0 unresolved                |
-| Resource results       | 41     | 32 exported, 0 partially-exported, 1 internal, 8 unused                              |
+| Inventory              | 103    | complete: 108 nodes, 103 leaves                                                      |
+| Resource inputs        | 38     | 25 direct, 5 transformed, 4 derived, 0 fixed, 4 omitted, 0 unresolved                |
+| Resource results       | 48     | 39 exported, 0 partially-exported, 1 internal, 8 unused                              |
 | Data-source selectors  | 17     | 12 direct, 2 transformed, 1 derived, 0 fixed, 2 omitted, 0 unresolved                |
 | Data-source results    | 50     | 2 exported, 0 partially-exported, 3 internal, 45 unused                              |
 | Provider configuration | 5      | 5 caller-owned, 0 direct, 0 transformed, 0 derived, 0 fixed, 0 omitted, 0 unresolved |
@@ -172,6 +172,21 @@ Configured by the caller. These fields are the caller's to set, not missing modu
 | `timeouts`                   | `block`        | optional                      | present                                                                                       | unconditional | unused   | automatic    | c5320ad89ff0 |
 | `timeouts.create`            | `string`       | optional                      | direct: `var.timeouts.create`                                                                 | unconditional | unused   | automatic    | 355f38644293 |
 | `user_data`                  | `string`       | optional                      | derived: `data.cloudinit_config.cloud_config.rendered`, `var.user_data`                       | conditional   | exported | automatic    | 355f38644293 |
+
+### `hcloud_server_network.current`
+
+- Provider: `registry.terraform.io/hetznercloud/hcloud`
+- Instances: conditional on `var.create_server`, `var.network_attachments`
+
+| Field         | Type          | Flags             | Input                                          | Availability  | Result   | Review    | Fingerprint  |
+| ------------- | ------------- | ----------------- | ---------------------------------------------- | ------------- | -------- | --------- | ------------ |
+| `alias_ips`   | `set(string)` | optional+computed | direct: `var.network_attachments[].alias_ips`  | conditional   | exported | automatic | 98ab525f6da8 |
+| `id`          | `string`      | computed          | —                                              | —             | exported | automatic | 5ea07e243572 |
+| `ip`          | `string`      | optional+computed | direct: `var.network_attachments[].ip`         | conditional   | exported | automatic | dfd8da8b7dee |
+| `mac_address` | `string`      | computed          | —                                              | —             | exported | automatic | 5ea07e243572 |
+| `network_id`  | `number`      | optional+computed | direct: `var.network_attachments[].network_id` | conditional   | exported | automatic | 4a09f8a91555 |
+| `server_id`   | `number`      | required          | derived: `hcloud_server.current.id`            | unconditional | exported | automatic | 79009235b2f3 |
+| `subnet_id`   | `string`      | optional          | direct: `var.network_attachments[].subnet_id`  | conditional   | exported | automatic | 355f38644293 |
 
 ### `module.placement_group.hcloud_placement_group.current`
 

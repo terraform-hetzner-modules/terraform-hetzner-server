@@ -34,6 +34,12 @@ The server module additionally requires cloudinit ~> 2.4.
 The optional [snapshot submodule](modules/snapshot) captures manual server snapshots;
 see the [snapshot example](examples/snapshot). Snapshots do not refresh when server files change.
 
+Use `private_networks` for inline networks attached during server creation, or
+`network_attachments` for separate `hcloud_server_network` resources attached afterward.
+Both support multiple networks; choose one approach per server. Keep inline networks
+for private-only servers and workloads that need private networking on first boot.
+See the [separate attachments example](examples/network-attachments).
+
 Read the [upgrade guide](docs/UPGRADING.md) before moving from v1.
 The generated [schema report](docs/SCHEMA.md) lists provider fields, module
 mappings, and remaining coverage review items.
@@ -73,11 +79,12 @@ for credential-free validation and tests.
 | <a name="input_labels"></a> [labels](#input\_labels) | A map of label to attach to the server on creation. | `map(string)` | `{}` | no |
 | <a name="input_location"></a> [location](#input\_location) | Location to create the server in. Null lets Hetzner choose a location; defaults to fsn1. | `string` | `"fsn1"` | no |
 | <a name="input_name"></a> [name](#input\_name) | The name given to the new server. Must be unique per Hetzner project and a valid hostname in accordance with RFC 1123. | `string` | n/a | yes |
+| <a name="input_network_attachments"></a> [network\_attachments](#input\_network\_attachments) | Named separate server-network resources, attached after server creation. Use exactly one of network\_id or subnet\_id per entry. Mutually exclusive with inline private networks; empty when create\_server is false. | ```map(object({ network_id = optional(number) subnet_id = optional(string) ip = optional(string) alias_ips = optional(set(string), []) }))``` | `{}` | no |
 | <a name="input_networking"></a> [networking](#input\_networking) | Public networking, including existing primary IP IDs. Null uses the provider's dual-stack defaults. | ```object({ ipv4 = optional(number) ipv4_enabled = optional(bool, true) ipv6 = optional(number) ipv6_enabled = optional(bool, true) })``` | `null` | no |
 | <a name="input_placement_group"></a> [placement\_group](#input\_placement\_group) | Create a placement group. Its name defaults to the server name. No group is created when create\_server is false. | ```object({ enabled = optional(bool, false) name = optional(string) type = optional(string, "spread") labels = optional(map(string), {}) })``` | `{}` | no |
 | <a name="input_placement_group_id"></a> [placement\_group\_id](#input\_placement\_group\_id) | Existing placement group ID. Mutually exclusive with placement\_group.enabled. | `number` | `null` | no |
 | <a name="input_private_network"></a> [private\_network](#input\_private\_network) | Compatibility input for one private network. Prefer private\_networks; do not use both. An empty object preserves the v1 no-network behavior. | ```object({ network_id = optional(number) subnet_id = optional(string) ip = optional(string) alias_ips = optional(list(string), []) })``` | `null` | no |
-| <a name="input_private_networks"></a> [private\_networks](#input\_private\_networks) | Named private network attachments. Prefer subnet\_id for explicit subnet selection and dependency ordering. | ```map(object({ network_id = optional(number) subnet_id = optional(string) ip = optional(string) alias_ips = optional(list(string), []) }))``` | `{}` | no |
+| <a name="input_private_networks"></a> [private\_networks](#input\_private\_networks) | Named inline private networks, attached during server creation. Mutually exclusive with network\_attachments. Prefer subnet\_id for explicit subnet selection and dependency ordering. | ```map(object({ network_id = optional(number) subnet_id = optional(string) ip = optional(string) alias_ips = optional(list(string), []) }))``` | `{}` | no |
 | <a name="input_rescue"></a> [rescue](#input\_rescue) | If specified the system will boot into the given rescue system to allow for easy installation of custom operating systems. | `string` | `null` | no |
 | <a name="input_shutdown_before_deletion"></a> [shutdown\_before\_deletion](#input\_shutdown\_before\_deletion) | Shutdown the server gracefully before deleting it. | `bool` | `true` | no |
 | <a name="input_ssh_keys"></a> [ssh\_keys](#input\_ssh\_keys) | A list of SSH key names or IDs, which should be injected into the server at creation. None are injected by default. | `list(string)` | `[]` | no |
@@ -106,7 +113,8 @@ for credential-free validation and tests.
 | <a name="output_labels"></a> [labels](#output\_labels) | The labels attached to the new Hetzner Cloud server. |
 | <a name="output_location"></a> [location](#output\_location) | The location of the Hetzner Cloud server. |
 | <a name="output_name"></a> [name](#output\_name) | The name of the Hetzner Cloud server. |
-| <a name="output_network"></a> [network](#output\_network) | The network the Hetzner Cloud server should be attached to. |
+| <a name="output_network"></a> [network](#output\_network) | Inline private networks on the server. See network\_attachments for separately managed attachments. |
+| <a name="output_network_attachments"></a> [network\_attachments](#output\_network\_attachments) | Separate network attachments keyed by caller-supplied names, including IDs, addresses, and MAC addresses. Empty when server creation is disabled. |
 | <a name="output_placement_group_id"></a> [placement\_group\_id](#output\_placement\_group\_id) | The placement group's ID for the new server. |
 | <a name="output_primary_disk_size"></a> [primary\_disk\_size](#output\_primary\_disk\_size) | Server primary\_disk\_size value, or null when creation is disabled. |
 | <a name="output_public_net"></a> [public\_net](#output\_public\_net) | Server public\_net value, or null when creation is disabled. |

@@ -99,3 +99,28 @@ The additive `modules/snapshot` submodule manages `hcloud_snapshot` independentl
 It exposes the server ID, description, labels, and create timeout; its output ID can be used as an image.
 Existing callers create no snapshots unless they invoke the submodule. Snapshots do not refresh when
 server files change. The submodule has a separate `docs/SCHEMA.md`; regenerate and check it from that directory.
+
+### Separate network attachments
+
+`network_attachments` adds keyed `hcloud_server_network` resources without changing existing
+inline `private_network`/`private_networks` behavior. Each entry accepts exactly one of
+`network_id` or `subnet_id`, plus optional `ip` and `alias_ips`. Prefer a subnet resource's
+ID to establish dependency ordering. Attach each server to a given network only once.
+The new `network_attachments` output includes all attachment attributes; `network`
+continues to describe inline networks. `create_server = false` creates no attachments.
+
+Do not mix inline and separate network management for the same server. Separate resources
+attach after the server has been created, so they cannot provide networking during its
+initial boot. Use inline networks for private-only servers or cloud-init that needs a
+private network immediately. Consumers needing completed attachments should reference
+the `network_attachments` output rather than only the server's `id`.
+
+Existing callers need no migration. If switching an existing server, back up state,
+remove its inline network configuration and import each existing attachment into
+`module.<name>.hcloud_server_network.current["<key>"]` using the provider's
+`<server_id>-<network_id>` import ID. Inline blocks cannot be migrated using a `moved`
+block. Review the plan before applying: do not apply a detach/reattach plan as an
+implicit migration. Changes to server, network, subnet, or IP can replace the attachment;
+alias IPs can be updated in place. Test migration in a disposable project first.
+
+See the [provider resource documentation](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/server_network).
