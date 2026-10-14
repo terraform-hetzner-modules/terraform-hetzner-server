@@ -20,9 +20,13 @@ A [Terraform module][module] to create and manage servers within [Hetzner Cloud]
 ## ✨ TL;DR
 
 ```hcl
-module "hetzner_server_apache" {
+module "server" {
   source = "terraform-hetzner-modules/server/hetzner"
-  ...
+
+  name   = "web-01"
+  type   = "cx23"
+  image  = "ubuntu-24.04"
+  labels = { role = "web" }
 }
 ```
 
