@@ -52,8 +52,8 @@ repos:
     hooks:
       - id: terraform_fmt
       - id: terraform_docs
-        # Document the public root module without generating fixture READMEs.
-        files: ^[^/]+\.tf$
+        # Document the public root and snapshot modules without fixture READMEs.
+        files: ^([^/]+|modules/snapshot/[^/]+)\.tf$
         args:
           - "--args=--config=.github/linters/.terraform-docs.yml"
           - "--args=--lockfile=false"

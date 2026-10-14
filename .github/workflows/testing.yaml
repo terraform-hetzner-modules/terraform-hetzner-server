@@ -60,7 +60,17 @@ jobs:
           TF_IN_AUTOMATION: "1"
         run: |
           "$TF_ENGINE" fmt -check -recursive
-          for directory in . modules/placement-group examples/basic examples/full; do
+          # Discover tracked configurations, including nested modules and test helpers.
+          mapfile -t directories < <(
+            {
+              printf '.\n'
+              git ls-files -z -- '*.tf' '*.tf.json' |
+                while IFS= read -r -d '' source_file; do
+                  dirname "$source_file"
+                done
+            } | sort -u
+          )
+          for directory in "${directories[@]}"; do
             "$TF_ENGINE" -chdir="$directory" init -backend=false -input=false -no-color
             "$TF_ENGINE" -chdir="$directory" validate -no-color
           done
@@ -86,13 +96,20 @@ jobs:
 
       - name: Lint Terraform
         run: |
-          for directory in . modules/placement-group examples/basic examples/full; do
-            tflint --chdir="$directory" --format compact --config="$GITHUB_WORKSPACE/.github/linters/.tflint.hcl"
+          mapfile -t directories < <(
+            git ls-files -z -- '*.tf' '*.tf.json' |
+              while IFS= read -r -d '' source_file; do
+                dirname "$source_file"
+              done | sort -u
+          )
+          for directory in "${directories[@]}"; do
+            args=(--chdir="$directory" --format compact --config="$GITHUB_WORKSPACE/.github/linters/.tflint.hcl")
+            # Test helpers follow HashiCorp's single-file main.tf examples.
+            if [[ "$directory" == tests || "$directory" == tests/* ]]; then
+              args+=(--disable-rule=terraform_standard_module_structure)
+            fi
+            tflint "${args[@]}"
           done
-          # Test helpers follow HashiCorp's single-file main.tf examples.
-          tflint --chdir=tests --recursive --format compact \
-            --config="$GITHUB_WORKSPACE/.github/linters/.tflint.hcl" \
-            --disable-rule=terraform_standard_module_structure
 
   dispatch:
     name: Dispatch a release

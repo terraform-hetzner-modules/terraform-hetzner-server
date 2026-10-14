@@ -31,6 +31,8 @@ module "hetzner_server_apache" {
 Requires Terraform >= 1.7 (OpenTofu >= 1.8 tested) and hcloud ~> 1.70.
 See [basic](examples/basic) and [full](examples/full) examples; configure credentials through `HCLOUD_TOKEN`.
 The server module additionally requires cloudinit ~> 2.4.
+The optional [snapshot submodule](modules/snapshot) captures manual server snapshots;
+see the [snapshot example](examples/snapshot). Snapshots do not refresh when server files change.
 
 Read the [upgrade guide](docs/UPGRADING.md) before moving from v1.
 The generated [schema report](docs/SCHEMA.md) lists provider fields, module

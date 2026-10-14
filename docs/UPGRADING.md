@@ -23,7 +23,7 @@ to the provider; no migration can make those configuration changes intrinsically
 
 Run `terraform init -backend=false`, `terraform validate`, and `terraform test`
 (or the equivalent `tofu` commands). Initialize and validate the examples and
-placement-group submodule separately. Tests mock cloud resources and use the
+placement-group and snapshot submodules separately. Tests mock cloud resources and use the
 real cloudinit provider to check payload rendering.
 No cloud credentials are needed and no real infrastructure is created.
 
@@ -92,3 +92,10 @@ an operating-system configuration task.
 
 New outputs expose primary disk size, public-network configuration, remaining supported server attributes,
 and cloud-init rendering/checksum. The placement-group submodule also exports its server IDs.
+
+### Manual snapshots
+
+The additive `modules/snapshot` submodule manages `hcloud_snapshot` independently of server creation.
+It exposes the server ID, description, labels, and create timeout; its output ID can be used as an image.
+Existing callers create no snapshots unless they invoke the submodule. Snapshots do not refresh when
+server files change. The submodule has a separate `docs/SCHEMA.md`; regenerate and check it from that directory.
