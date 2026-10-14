@@ -1,27 +1,75 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.3.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
+        args: ["--allow-multiple-documents"]
       - id: end-of-file-fixer
       - id: trailing-whitespace
-  - repo: https://github.com/markdownlint/markdownlint
-    rev: v0.13.0
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.49.1
     hooks:
       - id: markdownlint
+        exclude: ^CHANGELOG\.md$
         args:
-          - "-r ~MD013"
+          - "-c"
+          - ".github/linters/.markdown-lint.yml"
+
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.2
+    rev: v1.7.12
     hooks:
       - id: actionlint
+
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.30.1
+    hooks:
+      - id: zizmor
+        args:
+          - "-c"
+          - ".github/linters/zizmor.yaml"
+
   - repo: https://github.com/crate-ci/typos
-    rev: v1.24.6
+    rev: v1.51.1
     hooks:
       - id: typos
-        args: ["--config", ".github/linters/typos.toml"]
-  - repo: https://github.com/terraform-docs/terraform-docs
-    rev: "v0.19.0"
+        exclude: ^CHANGELOG\.md$
+        args:
+          - "--config"
+          - ".github/linters/typos.toml"
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
     hooks:
-      - id: terraform-docs-go
-        args: ["-c", ".github/linters/.terraform-docs.yml", "."]
+      - id: gitleaks
+        name: "Scan for potentially leaked secret values using 'gitleaks'"
+
+  # Terraform sources
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.109.2
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_docs
+        # Document the public root module without generating fixture READMEs.
+        files: ^[^/]+\.tf$
+        args:
+          - "--args=--config=.github/linters/.terraform-docs.yml"
+          - "--args=--lockfile=false"
+      - id: terraform_tflint
+        exclude: ^tests/
+        args:
+          - "--args=--config=__GIT_WORKING_DIR__/.github/linters/.tflint.hcl"
+      - id: terraform_tflint
+        name: Terraform lint (test helpers)
+        files: ^tests/.*\.tf$
+        args:
+          - "--args=--config=__GIT_WORKING_DIR__/.github/linters/.tflint.hcl"
+          # HashiCorp's test helpers put variables and outputs in main.tf.
+          - "--args=--disable-rule=terraform_standard_module_structure"
+      - id: terraform_validate
+        args:
+          - "--tf-init-args=-backend=false"
+          - "--tf-init-args=-input=false"
+          - "--hook-config=--parallelism-limit=1"

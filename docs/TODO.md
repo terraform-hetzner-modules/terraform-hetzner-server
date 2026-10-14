@@ -1,4 +1,4 @@
-# ✅ FMJ Studios Terraform Modules _PLATFORM_ - `TODO`s
+# ✅ Terraform Hetzner Modules - `TODO`s
 
 ## ➕ Additions
 

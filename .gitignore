@@ -1,23 +1,51 @@
-#######################################
-# EDITORS
-#######################################
+# .gitignore - Terraform modules
+
+###> general/ai ###
+
+# personal harness settings
+.claude/
+.codex/
+.agents/
+.openaxis/
+.omc/
+.omx/
+
+# assistants and IDEs
+.cursor/
+.windsurf/
+.cline/
+.roo/
+.aide/
+.cody/
+.continue/
+
+# local integrations
+.ollama/
+.openwebui/
+.crewai/
+.autogen/
+###>
+
+###> general/editors ###
 
 # IntelliJ IDEA
 .idea/*
 
-# JetBrains Fleet
-.fleet/*
-
 # VS Code
 .vscode/*
+###>
 
-#######################################
-# MISCELLANEOUS
-#######################################
+###> general/secret ###
 
-# Distribution directories
-dist/*
-build/*
+# Local credentials, private notes, and scratch work must not reach the index.
+secrets/*
+*.secret
+.env
+.env.*
+!.env.example
+###>
+
+###> source/sources ###
 
 # Local .terraform directories
 **/.terraform/*
@@ -32,7 +60,7 @@ build/*
 # Crash log files
 crash.log
 
-# Exclude all .tfvars files, which are likely to contain sentitive data, such as
+# Exclude all .tfvars files, which are likely to contain sensitive data, such as
 # password, private keys, and other secrets. These should not be part of version
 # control as they are data points which are potentially sensitive and subject
 # to change depending on the environment.
@@ -48,3 +76,26 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Local test artifacts
+*.tfplan
+*.tftest.hcl.tmp
+###>
+
+###> source/tests ###
+
+# Tests
+*.test
+
+# Go coverage tool output
+*.out
+###>
+
+###> source/temp ###
+
+__pycache__/
+
+# distribution
+dist/*
+build/*
+###>
