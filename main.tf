@@ -1,49 +1,52 @@
-# ------------------------------------------
-# Cloud-Init configuration
-# ------------------------------------------
-
 data "cloudinit_config" "cloud_config" {
-  gzip          = var.cloud_init["gzip"]
-  base64_encode = var.cloud_init["base64_encode"]
+  count         = local.render_cloud_init ? 1 : 0
+  gzip          = var.cloud_init.gzip
+  base64_encode = var.cloud_init.base64_encode
+  boundary      = var.cloud_init.boundary
 
-  part {
-    filename     = "cloud-config.yaml"
-    content_type = "text/cloud-config"
-    content      = yamlencode(var.cloud_init["config"])
+  dynamic "part" {
+    for_each = local.cloud_init_parts
+    content {
+      filename     = part.value.filename
+      content_type = part.value.content_type
+      content      = part.value.content
+      merge_type   = part.value.merge_type
+    }
   }
 }
 
-# ------------------------------------------
-# Server Data Sources
-# ------------------------------------------
-
-data "hcloud_images" "remote_images" {
-  with_architecture = [local.arch]
-}
-
 data "hcloud_server_type" "current_type" {
-  name = var.type
+  count = var.create_server ? 1 : 0
+  name  = var.type
 }
 
-data "hcloud_datacenter" "current" {
-  name = local.suffixed_datacenter
+data "hcloud_image" "os" {
+  count              = var.create_server ? 1 : 0
+  id                 = local.image_id
+  name               = local.image_id == null ? var.image : null
+  with_architecture  = data.hcloud_server_type.current_type[0].architecture
+  with_selector      = try(var.image_selector.with_selector, null)
+  most_recent        = try(var.image_selector.most_recent, false)
+  include_deprecated = try(var.image_selector.include_deprecated, false)
+  with_status        = try(var.image_selector.with_status, null)
+
+  lifecycle {
+    precondition {
+      condition     = (var.image != null) != (var.image_selector != null)
+      error_message = "Specify exactly one of image (name or ID) and image_selector."
+    }
+  }
 }
 
-# ------------------------------------------
-# Server Instance
-# ------------------------------------------
 resource "hcloud_server" "current" {
   count = var.create_server ? 1 : 0
 
-  # General configuration
-  name        = var.name
-  server_type = var.type
-  image       = data.hcloud_image.os.id
-  location    = var.location
-  user_data   = data.cloudinit_config.cloud_config.rendered
-  ssh_keys    = try(var.ssh_keys, [])
-
-  # Infrastructure configuration
+  name                       = var.name
+  server_type                = var.type
+  image                      = data.hcloud_image.os[0].id
+  location                   = var.location
+  user_data                  = var.user_data != null ? var.user_data : try(data.cloudinit_config.cloud_config[0].rendered, null)
+  ssh_keys                   = var.ssh_keys
   keep_disk                  = var.keep_disk
   iso                        = var.iso
   rescue                     = var.rescue
@@ -51,57 +54,58 @@ resource "hcloud_server" "current" {
   backups                    = var.backups
   firewall_ids               = var.firewall_ids
   ignore_remote_firewall_ids = var.ignore_remote_firewall_ids
-  placement_group_id         = var.placement_group.enabled ? module.placement_group.id : null
-
-  # Protections
-  delete_protection  = var.enable_protection
-  rebuild_protection = var.enable_protection
-
-  # Shutdown & Initialization
-  allow_deprecated_images  = var.allow_deprecated_images
-  shutdown_before_deletion = var.shutdown_before_deletion
+  placement_group_id         = var.placement_group.enabled ? module.placement_group[0].id : var.placement_group_id
+  delete_protection          = var.enable_protection
+  rebuild_protection         = var.enable_protection
+  shutdown_before_deletion   = var.shutdown_before_deletion
 
   dynamic "public_net" {
-    for_each = var.networking != {} ? [1] : []
-
+    for_each = var.networking == null ? [] : [var.networking]
     content {
-      ipv4         = try(var.networking["ipv4"], null)
-      ipv4_enabled = try(var.networking["ipv4_enabled"], true)
-      ipv6         = try(var.networking["ipv6"], null)
-      ipv6_enabled = try(var.networking["ipv6_enabled"], true)
+      ipv4         = public_net.value.ipv4
+      ipv4_enabled = public_net.value.ipv4_enabled
+      ipv6         = public_net.value.ipv6
+      ipv6_enabled = public_net.value.ipv6_enabled
     }
   }
-
   dynamic "network" {
-    for_each = var.private_network != {} ? [1] : []
-
+    for_each = local.private_networks
     content {
-      alias_ips  = try(var.private_network["alias_ips"], [""])
-      ip         = try(var.private_network["ip"], null)
-      network_id = try(var.private_network["network_id"], null)
+      alias_ips  = network.value.alias_ips
+      ip         = network.value.ip
+      network_id = network.value.network_id
+      subnet_id  = network.value.subnet_id
     }
   }
-
+  timeouts {
+    create = var.timeouts.create
+  }
   lifecycle {
+    # SSH keys are injected only at creation. Retain v1 behavior to avoid replacement.
     ignore_changes = [ssh_keys]
-
     precondition {
-      condition     = contains(data.hcloud_images.remote_images.images[*].name, var.image)
-      error_message = "Hetzner Cloud does not have your requested OS image: '${var.image}'. Please be sure to create a snapshot of a custom image first, or upload the custom image manually."
+      condition     = !var.placement_group.enabled || var.placement_group_id == null
+      error_message = "Choose an existing placement_group_id or enable a managed placement_group, not both."
     }
-
     precondition {
-      condition     = contains(data.hcloud_datacenter.current.supported_server_type_ids, data.hcloud_server_type.current_type.id)
-      error_message = "The Hetzner Cloud location you chose does not support the server type you chose! Please switch to another server type or location to continue."
+      condition     = length(local.legacy_private_network) == 0 || length(var.private_networks) == 0
+      error_message = "Use either private_network or private_networks."
+    }
+    precondition {
+      condition     = alltrue([for n in local.private_networks : n.network_id != null || n.subnet_id != null])
+      error_message = "Each private network needs a network_id or subnet_id."
+    }
+    precondition {
+      condition     = var.location == null ? true : contains(data.hcloud_server_type.current_type[0].locations[*].name, var.location)
+      error_message = "The chosen server type does not support this location."
     }
   }
 }
 
 module "placement_group" {
   source = "./modules/placement-group"
-  count  = var.placement_group.enabled ? 1 : 0
-
-  name   = var.placement_group.name
+  count  = var.create_server && var.placement_group.enabled ? 1 : 0
+  name   = coalesce(var.placement_group.name, var.name)
   type   = var.placement_group.type
   labels = var.placement_group.labels
 }

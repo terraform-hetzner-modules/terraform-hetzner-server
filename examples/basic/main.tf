@@ -1,9 +1,9 @@
 module "hetzner_server_example" {
-  source = ".."
+  source = "../.."
 
   name     = "example-server"
-  type     = "cpx11"
-  image    = "ubuntu-22.04"
+  type     = "cx23"
+  image    = "ubuntu-24.04"
   location = "nbg1"
 
   networking = {

@@ -1,4 +1,4 @@
 output "ipv4" {
-  value       = null
-  description = "The IPv4 address assigned to the new server."
+  value       = module.hetzner_server_example.ipv4_address
+  description = "IPv4 address of the example server."
 }

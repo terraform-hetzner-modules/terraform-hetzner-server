@@ -10,12 +10,13 @@ variable "type" {
 
 variable "image" {
   type        = string
-  description = "The OS image to use for the new server."
+  description = "OS image name or numeric image ID. Leave null when using image_selector."
+  default     = null
 }
 
 variable "location" {
   type        = string
-  description = "The data center location to create the new machine in. Can be one of the following: 'nbg1', 'fsn1', 'hel1', 'ash' or 'hil'. Default is 'fsn1'."
+  description = "Location to create the server in. Null lets Hetzner choose a location; defaults to fsn1."
   default     = "fsn1"
 }
 
@@ -67,33 +68,57 @@ variable "ignore_remote_firewall_ids" {
   default     = false
 }
 
+
 variable "networking" {
-  type        = any
-  description = "The networking settings to apply to the instance. Like whether IPv6 is enabled or not. By default both IPv4 and IPv6 are enabled. The IPv4 address may be manually or automatically assigned via Hetzner."
-  default     = {}
+  type = object({
+    ipv4         = optional(number)
+    ipv4_enabled = optional(bool, true)
+    ipv6         = optional(number)
+    ipv6_enabled = optional(bool, true)
+  })
+  description = "Public networking, including existing primary IP IDs. Null uses the provider's dual-stack defaults."
+  default     = null
 }
-
 variable "private_network" {
-  type        = any
-  description = "The private network to attach the server to on creation."
-  default     = {}
+  type = object({
+    network_id = optional(number)
+    subnet_id  = optional(string)
+    ip         = optional(string)
+    alias_ips  = optional(list(string), [])
+  })
+  description = "Compatibility input for one private network. Prefer private_networks; do not use both. An empty object preserves the v1 no-network behavior."
+  default     = null
 }
-
-# variable "placement_group_id" {
-#   type        = string
-#   description = "The ID of a placement group to attach to the server."
-#   default     = null
-# }
-
+variable "private_networks" {
+  type = map(object({
+    network_id = optional(number)
+    subnet_id  = optional(string)
+    ip         = optional(string)
+    alias_ips  = optional(list(string), [])
+  }))
+  description = "Named private network attachments. Prefer subnet_id for explicit subnet selection and dependency ordering."
+  default     = {}
+  nullable    = false
+  validation {
+    condition     = alltrue([for n in var.private_networks : n.network_id != null || n.subnet_id != null])
+    error_message = "Every private network requires network_id or subnet_id (or matching values for both)."
+  }
+}
+variable "placement_group_id" {
+  type        = number
+  description = "Existing placement group ID. Mutually exclusive with placement_group.enabled."
+  default     = null
+}
 variable "enable_protection" {
   type        = bool
   description = "Enable Hetzner's 'rebuild' and 'delete' protection."
   default     = false
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "allow_deprecated_images" {
   type        = bool
-  description = "Enable the use of deprecated images. NOTE: Deprecated images will be removed after three months."
+  description = "Deprecated compatibility input: the provider no longer uses this flag. Use image_selector.include_deprecated for image discovery."
   default     = false
 }
 
@@ -113,29 +138,71 @@ variable "create_server" {
   default     = true
 }
 
+
 variable "placement_group" {
   type = object({
-    enabled = bool
+    enabled = optional(bool, false)
     name    = optional(string)
-    type    = optional(string)
-    labels  = optional(map(string))
+    type    = optional(string, "spread")
+    labels  = optional(map(string), {})
   })
-  default = {
-    enabled = false
-  }
-  description = "Configuration for a placement group to be attached to the server."
+  default     = {}
+  nullable    = false
+  description = "Create a placement group. Its name defaults to the server name. No group is created when create_server is false."
 }
-
 variable "cloud_init" {
   type = object({
-    gzip          = bool
-    base64_encode = bool
-    config        = any
+    gzip           = optional(bool, true)
+    base64_encode  = optional(bool, true)
+    boundary       = optional(string, "MIMEBOUNDARY")
+    include_config = optional(bool, true)
+    config         = optional(any, {})
+    parts = optional(list(object({
+      content      = string
+      content_type = optional(string, "text/plain")
+      filename     = optional(string)
+      merge_type   = optional(string)
+    })), [])
   })
-  description = "The cloud_init configuration to render the template with."
-  default = {
-    gzip          = true
-    base64_encode = true
-    config        = {}
+  default     = {}
+  nullable    = false
+  description = "Cloud-init MIME configuration. The YAML config part is first, followed by parts in list order. Set include_config=false for custom parts only. Raw user_data takes precedence."
+  validation {
+    condition     = !var.cloud_init.gzip || var.cloud_init.base64_encode
+    error_message = "base64_encode must be true when gzip is true."
   }
+  validation {
+    condition     = var.cloud_init.include_config || length(var.cloud_init.parts) > 0
+    error_message = "Cloud-init requires a config part or at least one custom part. To omit user data, use cloud_init_enabled=false."
+  }
+}
+variable "cloud_init_enabled" {
+  type        = bool
+  default     = true
+  nullable    = false
+  description = "Render cloud-init. Raw user_data takes precedence; set false to skip rendering. False with user_data=null sends no user data."
+}
+variable "user_data" {
+  type        = string
+  default     = null
+  sensitive   = true
+  description = "Raw user data, passed through unchanged and taking precedence over cloud_init."
+}
+variable "image_selector" {
+  type = object({
+    with_selector      = string
+    most_recent        = optional(bool, true)
+    include_deprecated = optional(bool, false)
+    with_status        = optional(set(string), ["available"])
+  })
+  default     = null
+  description = "Discover an image by labels, filtered to the server architecture. Mutually exclusive with image."
+}
+variable "timeouts" {
+  type = object({
+    create = optional(string)
+  })
+  default     = {}
+  nullable    = false
+  description = "Provider operation timeouts, for example { create = \"20m\" }. Null uses the provider default."
 }

@@ -17,3 +17,8 @@ output "labels" {
   value       = hcloud_placement_group.current.labels
   description = "The labels for the new Hetzner Cloud placement group."
 }
+
+output "servers" {
+  value       = hcloud_placement_group.current.servers
+  description = "IDs of servers in this placement group."
+}
