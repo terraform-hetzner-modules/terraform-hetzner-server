@@ -1,3 +1,9 @@
+## [2.2.0](https://github.com/terraform-hetzner-modules/terraform-hetzner-server/compare/v2.1.0...v2.2.0) (2026-10-14)
+
+### Features
+
+* **server:** support separate network attachments ([1f3b0be](https://github.com/terraform-hetzner-modules/terraform-hetzner-server/commit/1f3b0bed20eb06e363c248f912b25da11cfb4840))
+
 ## [2.1.0](https://github.com/terraform-hetzner-modules/terraform-hetzner-server/compare/v2.0.0...v2.1.0) (2026-10-14)
 
 ### Features
