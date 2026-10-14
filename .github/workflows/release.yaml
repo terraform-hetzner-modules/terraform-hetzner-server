@@ -56,8 +56,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          semantic_version: 25.0.9
+          semantic_version: 25
+          branches: |
+            [
+              'main',
+              'next'
+            ]
           extra_plugins: |
-            @semantic-release/changelog@7.0.0
-            @semantic-release/git@11.0.1
-            conventional-changelog-conventionalcommits@10.4.1
+            @semantic-release/changelog@6.0.3
+            @semantic-release/exec@7.0.3
+            @semantic-release/git@10.0.1
+            conventional-changelog-conventionalcommits@8.0.0
