@@ -1,43 +1,63 @@
-name: "Release"
+name: Release
 
 on:
   workflow_dispatch:
-  repository_dispatch:
-    types: [release]
-  pull_request:
-    branches:
-      - "main"
+    inputs:
+      sha:
+        description: Optional tested commit; must still be the selected branch head
+        required: false
+        type: string
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 defaults:
   run:
     shell: bash
 
 concurrency:
-  group: "${{ github.workflow }}@${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  group: ${{ github.workflow }}
+  # Finish an in-progress release before starting another one.
+  cancel-in-progress: false
 
 jobs:
   release:
+    name: Prepare and publish the release
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next'
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+    permissions:
+      contents: write # Publish tags, releases, and the changelog commit.
+      issues: write # Comment on issues included in a release.
+      pull-requests: write # Comment on pull requests included in a release.
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout selected branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check release inputs
+        env:
+          TESTED_SHA: ${{ inputs.sha }}
+        run: |
+          if [[ -n "${TESTED_SHA}" && "${TESTED_SHA}" != "$(git rev-parse HEAD)" ]]; then
+            echo "::error::The branch has advanced since testing. Run Testing again before releasing." >&2
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.0
+          package-manager-cache: false
 
       - name: Semantic Release
-        uses: cycjimmy/semantic-release-action@v4
+        uses: cycjimmy/semantic-release-action@9e1f8a3ef91f1097285028e799a5fb8bb90e8899 # v8.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          semantic_version: 24
-          branches: |
-            [
-              'main',
-              'next'
-            ]
+          semantic_version: 25.0.9
           extra_plugins: |
-            @semantic-release/changelog@6.0.3
-            @semantic-release/git@10.0.1
-            conventional-changelog-conventionalcommits@8.0.0
+            @semantic-release/changelog@7.0.0
+            @semantic-release/git@11.0.1
+            conventional-changelog-conventionalcommits@10.4.1

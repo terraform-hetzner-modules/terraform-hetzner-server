@@ -1,5 +1,7 @@
 [default]
 extend-ignore-identifiers-re = ["hel.*", "Hashi.*"]
+# Generated schema fingerprints and pinned action commit hashes are not words.
+extend-ignore-re = ['\b[0-9a-f]{12,64}\b']
 
 [default.extend-identifiers]
 HashiCorp = "HashiCorp"

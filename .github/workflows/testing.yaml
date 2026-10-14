@@ -1,17 +1,13 @@
 name: "Testing"
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   push:
-    branches:
-      - "**"
+    branches: [main, next]
   pull_request:
-    branches:
-      - "**"
+    branches: [main, next]
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 defaults:
   run:
@@ -19,87 +15,101 @@ defaults:
 
 concurrency:
   group: "${{ github.workflow }}@${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  cancel-in-progress: true
 
 jobs:
   test:
-    name: Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Check out modules, examples, and tests.
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        terraform_version: [1.7, 1.8, 1.9]
-    env:
-      GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }} # https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
-    runs-on: ${{ matrix.os }}
+        include:
+          - engine: terraform
+            version: 1.7.5
+          - engine: terraform
+            version: 1.16.6
+          - engine: tofu
+            version: 1.8.8
+          - engine: tofu
+            version: 1.13.1
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        if: matrix.engine == 'terraform'
         with:
-          terraform_version: "~${{ matrix.terraform_version }}"
+          terraform_version: ${{ matrix.version }}
+          terraform_wrapper: false
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        if: matrix.engine == 'tofu'
+        with:
+          tofu_version: ${{ matrix.version }}
+          tofu_wrapper: false
+
+      - name: Validate modules, examples, and behavior
+        env:
+          TF_ENGINE: ${{ matrix.engine }}
+          TF_IN_AUTOMATION: "1"
+        run: |
+          "$TF_ENGINE" fmt -check -recursive
+          for directory in . modules/placement-group examples/basic examples/full; do
+            "$TF_ENGINE" -chdir="$directory" init -backend=false -input=false -no-color
+            "$TF_ENGINE" -chdir="$directory" validate -no-color
+          done
+          "$TF_ENGINE" test -no-color
+
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Check out the Terraform configuration to lint.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up TFLint
-        uses: terraform-linters/setup-tflint@v4
+        uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
         with:
-          github_token: ${{ env.GITHUB_TOKEN }}
-          tflint_version: "v0.53.0"
+          tflint_version: v0.64.0
 
-      - name: Cache TFLint plugins
-        uses: actions/cache@v4
-        with:
-          path: ~/.tflint.d/plugins
-          key: ${{ matrix.os }}-tflint-${{ hashFiles('.tflint.hcl') }}
+      - name: Initialize TFLint
+        run: tflint --init --config="$GITHUB_WORKSPACE/.github/linters/.tflint.hcl"
 
-      - name: Cache Terraform dependencies
-        uses: actions/cache@v4
-        with:
-          path: .terraform
-          key: ${{ matrix.os }}-terraform-${{ hashFiles('versions.tf') }}
-
-      - name: Terraform fmt
-        id: fmt
-        run: terraform fmt -check
-        continue-on-error: true
-
-      - name: Terraform Init
-        id: init
-        run: terraform init
-
-      - name: Terraform Validate
-        id: validate
-        run: terraform validate -no-color
-
-      - name: Init TFLint
-        run: tflint --init
-
-      - name: Run TFLint
-        id: tflint
-        run: tflint -f compact
+      - name: Lint Terraform
+        run: |
+          for directory in . modules/placement-group examples/basic examples/full; do
+            tflint --chdir="$directory" --format compact --config="$GITHUB_WORKSPACE/.github/linters/.tflint.hcl"
+          done
+          # Test helpers follow HashiCorp's single-file main.tf examples.
+          tflint --chdir=tests --recursive --format compact \
+            --config="$GITHUB_WORKSPACE/.github/linters/.tflint.hcl" \
+            --disable-rule=terraform_standard_module_structure
 
   dispatch:
+    name: Dispatch a release
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-    needs: [test]
+    needs: [test, lint]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next')
+    permissions:
+      actions: write # Dispatch release.yaml after all tests and lint succeed.
     steps:
-      - name: Dispatch a release workflow run
-        if: ${{ always() && contains(join(needs.*.result, ','), 'success') }} # ref: https://github.com/actions/runner/issues/1251
-        uses: actions/github-script@v7
+      - name: Dispatch the tested branch and commit
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: "${{ env.GITHUB_TOKEN }}"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const payload = {
-              run_id: "${{ github.run_id }}",
-              sha: "${{ github.sha }}"
-            }
-
-            console.log("Sending event payload", JSON.stringify(payload, null, 2));
-
-            const { owner, repo } = context.repo;
-            await github.rest.repos.createDispatchEvent({
-              owner,
-              repo,
-              event_type: 'release',
-              client_payload: payload
+            await github.rest.actions.createWorkflowDispatch({
+              ...context.repo,
+              workflow_id: 'release.yaml',
+              ref: context.ref.replace('refs/heads/', ''),
+              inputs: { sha: context.sha }
             });

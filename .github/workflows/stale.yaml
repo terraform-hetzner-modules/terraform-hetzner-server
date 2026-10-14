@@ -5,22 +5,24 @@ on:
     - cron: "30 18 * * 0"
   workflow_dispatch:
 
-permissions:
-  issues: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   stale:
     name: Mark issues and PRs as stale
     runs-on: ubuntu-latest
+    permissions:
+      issues: write # Label and close inactive issues.
+      pull-requests: write # Label and close inactive pull requests.
     steps:
-      - uses: actions/stale@v9
+      - name: Mark and close stale items
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
         with:
           # see https://github.com/actions/stale#all-options
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          close-issue-label: "'This issue has been automatically closed because it has not had recent activity."
+          close-issue-label: stale
           close-issue-message: false
-          close-pr-label: "'This PR has been automatically closed because it has not had recent activity."
+          close-pr-label: stale
           close-pr-message: false
           days-before-stale: 30
           days-before-close: 60
