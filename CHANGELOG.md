@@ -1,3 +1,9 @@
+## [2.1.0](https://github.com/terraform-hetzner-modules/terraform-hetzner-server/compare/v2.0.0...v2.1.0) (2026-10-14)
+
+### Features
+
+* **module:** add optional server snapshot submodule ([3123372](https://github.com/terraform-hetzner-modules/terraform-hetzner-server/commit/3123372845a3230d7fd0c0f6ae8367e88feb8a03))
+
 ## [2.0.0](https://github.com/terraform-hetzner-modules/terraform-hetzner-server/compare/v1.0.0...v2.0.0) (2026-10-14)
 
 ### ⚠ BREAKING CHANGES
