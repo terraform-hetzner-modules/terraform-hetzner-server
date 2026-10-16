@@ -4,8 +4,7 @@ version: ">= 0.13.0, < 1.0.0"
 
 sections:
   hide:
-    - requirements
-    - resources
+    - modules
     - data-sources
 
 output:
@@ -21,7 +20,7 @@ sort:
   by: name
 
 settings:
-  anchor: true
+  anchor: false
   color: true
   default: true
   description: false
