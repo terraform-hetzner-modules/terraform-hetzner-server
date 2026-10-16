@@ -23,26 +23,6 @@ module "snapshot" {
 }
 ```
 
-## Provider configuration
-
-Export your API token as `HCLOUD_TOKEN` and put this in your calling root's `versions.tf`:
-
-```hcl
-terraform {
-  required_version = ">= 1.7"
-  required_providers {
-    hcloud = {
-      source  = "hetznercloud/hcloud"
-      version = "~> 1.70"
-    }
-  }
-}
-
-provider "hcloud" {}
-```
-
-Run `terraform init`, `terraform plan`, and `terraform apply` from the calling root.
-
 ## Notes
 
 A snapshot captures a point in time. File changes on the parent do not refresh an existing snapshot.

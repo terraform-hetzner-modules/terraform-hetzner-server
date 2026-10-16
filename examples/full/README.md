@@ -36,4 +36,4 @@ terraform apply
 ```
 
 This creates real infrastructure. Review the plan and any deletion protection before cleanup.
-See the [module README](../../README.md) for provider configuration and input descriptions.
+See the [module README](../../README.md) for usage and input descriptions.

@@ -4,8 +4,7 @@ Manage a Cloud server with cloud-init, public and private networking, firewall a
 
 ## Usage
 
-Copy this configuration into `main.tf` and add the
-[provider configuration](#provider-configuration) below in `versions.tf`.
+Copy this configuration into `main.tf`.
 
 ```hcl
 resource "hcloud_ssh_key" "admin" {
@@ -26,32 +25,6 @@ module "server" {
 
 This registers your existing public key and injects it when creating the server. Replace the key
 path with your own; private key material stays on your machine.
-
-## Provider configuration
-
-Export your Hetzner API token as `HCLOUD_TOKEN`. Put the following in your calling root's `versions.tf`:
-
-```hcl
-terraform {
-  required_version = ">= 1.7"
-  required_providers {
-    hcloud = {
-      source  = "hetznercloud/hcloud"
-      version = "~> 1.70"
-    }
-    cloudinit = {
-      source  = "hashicorp/cloudinit"
-      version = "~> 2.4"
-    }
-  }
-}
-
-provider "hcloud" {}
-```
-
-With both files in place, run `terraform init`, `terraform plan`, and `terraform apply`.
-Credentials and provider configuration belong in the calling root.
-Terraform >= 1.7 and OpenTofu >= 1.8 are supported.
 
 ## Examples
 
